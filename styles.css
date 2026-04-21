@@ -253,6 +253,35 @@ h1 {
   font-size: 0.95rem;
 }
 
+.utility-page {
+  justify-content: center;
+}
+
+.utility-card {
+  text-align: center;
+  gap: 0.8rem;
+}
+
+.utility-card h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.utility-card p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.btn--secondary {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: #ded3ee;
+  color: #3f2b5d;
+  font-weight: 700;
+  border: 1px solid #bfa9da;
+}
+
 .goals-form {
   margin-top: 0.5rem;
   display: flex;

@@ -16,7 +16,7 @@ const wakeTimeInput = document.querySelector("#wakeTimeInput");
 const targetSleepInput = document.querySelector("#targetSleepInput");
 const targetSleepValue = document.querySelector("#targetSleepValue");
 
-const greetingName = document.querySelector("#greetingName");
+const homeGreeting = document.querySelector("#homeGreeting");
 const bedtimeGoal = document.querySelector("#bedtimeGoal");
 const wakeGoal = document.querySelector("#wakeGoal");
 const trackerGrid = document.querySelector("#trackerGrid");
@@ -30,6 +30,7 @@ function showPage(pageName) {
   pages.forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);
   });
+  updateBottomNav(pageName);
 }
 
 function formatSleepHours(value) {
@@ -138,7 +139,14 @@ function syncGoalsToHome() {
 }
 
 function syncProfileToHome() {
-  greetingName.textContent = appState.name;
+  homeGreeting.textContent = `Hey, ${appState.name}!`;
+}
+
+function updateBottomNav(pageName) {
+  const tabs = Array.from(document.querySelectorAll(".nav-item"));
+  tabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.goTo === pageName);
+  });
 }
 
 navButtons.forEach((button) => {
@@ -179,6 +187,7 @@ function initialize() {
   syncGoalsToHome();
   renderTracker();
   updateStats();
+  updateBottomNav("home");
 }
 
 initialize();

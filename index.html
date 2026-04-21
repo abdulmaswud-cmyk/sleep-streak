@@ -145,12 +145,85 @@
           </section>
 
           <nav class="bottom-nav" aria-label="Primary">
-            <button class="nav-item is-active" type="button">Home</button>
-            <button class="nav-item" type="button">Leaderboard</button>
-            <button class="nav-item" type="button">Rewards</button>
-            <button class="nav-item" type="button">History</button>
-            <button class="nav-item" type="button">Settings</button>
+            <button class="nav-item is-active" type="button" data-go-to="home">
+              Home
+            </button>
+            <button class="nav-item" type="button" data-go-to="leaderboard">
+              Leaderboard
+            </button>
+            <button class="nav-item" type="button" data-go-to="rewards">
+              Rewards
+            </button>
+            <button class="nav-item" type="button" data-go-to="history">
+              History
+            </button>
+            <button class="nav-item" type="button" data-go-to="settings">
+              Settings
+            </button>
           </nav>
+        </section>
+
+        <section class="page page--sub" data-page="leaderboard">
+          <header class="sub-header">
+            <h2>Leaderboard</h2>
+            <p>See how you stack up this week.</p>
+          </header>
+          <article class="card">
+            <ol class="rank-list">
+              <li><span>Night Owl Nora</span><strong>2,300 pts</strong></li>
+              <li><span>Dream Chaser Dan</span><strong>1,950 pts</strong></li>
+              <li><span id="leaderboardYouLabel">You</span><strong id="leaderboardYouPoints">0 pts</strong></li>
+            </ol>
+          </article>
+          <button class="btn btn--ghost" type="button" data-go-to="home">
+            &larr; Back to Home
+          </button>
+        </section>
+
+        <section class="page page--sub" data-page="rewards">
+          <header class="sub-header">
+            <h2>Rewards</h2>
+            <p>Unlock perks by maintaining your streak.</p>
+          </header>
+          <article class="card">
+            <ul class="reward-list">
+              <li><span>3-day streak badge</span><strong>Unlocked at 300 pts</strong></li>
+              <li><span>7-day consistency badge</span><strong>Unlocked at 700 pts</strong></li>
+              <li><span>Level-up glow theme</span><strong>Unlocked at 1500 pts</strong></li>
+            </ul>
+          </article>
+          <button class="btn btn--ghost" type="button" data-go-to="home">
+            &larr; Back to Home
+          </button>
+        </section>
+
+        <section class="page page--sub" data-page="history">
+          <header class="sub-header">
+            <h2>History</h2>
+            <p>Review your recent sleep check-ins.</p>
+          </header>
+          <article class="card">
+            <ul class="history-list" id="historyList"></ul>
+          </article>
+          <button class="btn btn--ghost" type="button" data-go-to="home">
+            &larr; Back to Home
+          </button>
+        </section>
+
+        <section class="page page--sub" data-page="settings">
+          <header class="sub-header">
+            <h2>Settings</h2>
+            <p>Manage your profile and goals.</p>
+          </header>
+          <article class="card settings-list">
+            <p><span>Name</span><strong id="settingsNameValue">Sleeper</strong></p>
+            <p><span>Bedtime goal</span><strong id="settingsBedtimeValue">22:00</strong></p>
+            <p><span>Wake goal</span><strong id="settingsWakeValue">07:00</strong></p>
+            <p><span>Target sleep</span><strong id="settingsTargetValue">9 hours</strong></p>
+          </article>
+          <button class="btn btn--ghost" type="button" data-go-to="home">
+            &larr; Back to Home
+          </button>
         </section>
       </section>
     </main>
