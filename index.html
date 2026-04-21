@@ -88,7 +88,12 @@
 
         <section class="page page--home" data-page="home">
           <header class="home-header">
-            <h2 id="homeGreeting">Hey, Sleeper!</h2>
+            <div>
+              <h2 id="homeGreeting">Hey, Sleeper!</h2>
+              <p class="motivation-line" id="motivationLine">
+                One good night at a time - you've got this.
+              </p>
+            </div>
             <button class="btn btn--ghost btn--sm" type="button" data-go-to="goals">
               Edit goals
             </button>
@@ -116,6 +121,17 @@
             <p class="subtle" id="streakMessage">Start your streak today!</p>
             <p class="tiny-label points-label">Total Points</p>
             <p class="big-value" id="totalPoints">0</p>
+            <div class="insights-grid">
+              <div class="insight-box">
+                <p class="tiny-label">Consistency</p>
+                <strong id="weeklyConsistency">0%</strong>
+              </div>
+              <div class="insight-box">
+                <p class="tiny-label">On-time checks</p>
+                <strong id="onTimeCheckIns">0 / 0</strong>
+              </div>
+            </div>
+            <p class="subtle" id="trendMessage">Complete both check-ins to start building insights.</p>
           </article>
 
           <article class="card tracker-card">
@@ -133,6 +149,10 @@
               <span class="legend-item legend-item--today">Today</span>
             </div>
           </article>
+
+          <p class="subtle reminder-line" id="reminderText">
+            Reminder time: 21:45
+          </p>
 
           <section class="checkins">
             <article class="card checkin-card">
@@ -199,6 +219,9 @@
               <li><span>Dream Chaser Dan</span><strong>1,950 pts</strong></li>
               <li><span id="leaderboardYouLabel">You</span><strong id="leaderboardYouPoints">0 pts</strong></li>
             </ol>
+            <p class="subtle leaderboard-hint" id="leaderboardRankHint">
+              Keep checking in to climb the board.
+            </p>
           </article>
           <button class="btn btn--ghost" type="button" data-go-to="home">
             &larr; Back to Home
@@ -245,7 +268,38 @@
             <p><span>Bedtime goal</span><strong id="settingsBedtimeValue">22:00</strong></p>
             <p><span>Wake goal</span><strong id="settingsWakeValue">07:00</strong></p>
             <p><span>Target sleep</span><strong id="settingsTargetValue">9 hours</strong></p>
+            <p><span>Theme</span><strong id="settingsThemeValue">Twilight</strong></p>
+            <p><span>Reminder</span><strong id="settingsReminderValue">21:45</strong></p>
+            <p><span>Nudges</span><strong id="settingsNudgesValue">Enabled</strong></p>
           </article>
+          <form id="settingsForm" class="card settings-form">
+            <label class="settings-field">
+              <span>Display name</span>
+              <input id="settingsNameInput" type="text" maxlength="40" autocomplete="name" />
+            </label>
+
+            <label class="settings-field">
+              <span>Theme</span>
+              <select id="themeSelect">
+                <option value="twilight">Twilight Purple</option>
+                <option value="dawn">Dawn Glow</option>
+                <option value="midnight">Midnight Blue</option>
+              </select>
+            </label>
+
+            <label class="settings-field">
+              <span>Reminder time</span>
+              <input id="reminderTimeInput" type="time" />
+            </label>
+
+            <label class="toggle-row">
+              <input id="nudgesToggle" type="checkbox" />
+              <span>Show motivational nudges on Home</span>
+            </label>
+
+            <button class="btn btn--primary" type="submit">Save Preferences</button>
+            <p class="save-feedback" id="settingsSaveFeedback" aria-live="polite"></p>
+          </form>
           <button class="btn btn--ghost" type="button" data-go-to="home">
             &larr; Back to Home
           </button>
