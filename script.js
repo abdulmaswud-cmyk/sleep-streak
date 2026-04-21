@@ -19,10 +19,10 @@ const targetSleepValue = document.querySelector("#targetSleepValue");
 const homeGreeting = document.querySelector("#homeGreeting");
 const bedtimeGoal = document.querySelector("#bedtimeGoal");
 const wakeGoal = document.querySelector("#wakeGoal");
-const bedtimeStatus = document.querySelector("#bedtimeStatus");
-const wakeStatus = document.querySelector("#wakeStatus");
-const bedtimeCheckInButton = document.querySelector("#bedtimeCheckInButton");
-const wakeCheckInButton = document.querySelector("#wakeCheckInButton");
+const bedtimeStatus = document.querySelector("#bedtimeCheckStatus");
+const wakeStatus = document.querySelector("#wakeCheckStatus");
+const bedtimeCheckInButton = document.querySelector("#bedtimeCheckButton");
+const wakeCheckInButton = document.querySelector("#wakeCheckButton");
 const trackerGrid = document.querySelector("#trackerGrid");
 const currentStreak = document.querySelector("#currentStreak");
 const longestStreak = document.querySelector("#longestStreak");
@@ -58,6 +58,7 @@ function getWeekConfig() {
     dates.push({
       day: dayNames[date.getDay()],
       date: date.getDate(),
+      dayKey: getDayKey(date),
       isToday: i === 0,
     });
   }
@@ -237,8 +238,12 @@ navButtons.forEach((button) => {
 });
 
 targetSleepInput.addEventListener("input", updateTargetDisplay);
-bedtimeCheckInButton.addEventListener("click", () => handleTimedCheckIn("bedtime"));
-wakeCheckInButton.addEventListener("click", () => handleTimedCheckIn("wake"));
+if (bedtimeCheckInButton) {
+  bedtimeCheckInButton.addEventListener("click", () => handleTimedCheckIn("bedtime"));
+}
+if (wakeCheckInButton) {
+  wakeCheckInButton.addEventListener("click", () => handleTimedCheckIn("wake"));
+}
 
 signupForm.addEventListener("submit", (event) => {
   event.preventDefault();
