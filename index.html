@@ -23,9 +23,31 @@
           </div>
           <h1>Sleep Streaks</h1>
           <p>Turn your sleep into a game. Build streaks. Earn rewards.</p>
-          <button class="btn btn--primary" type="button" data-go-to="goals">
+          <button class="btn btn--primary" type="button" data-go-to="signup">
             Get Started
           </button>
+        </section>
+
+        <section class="page page--signup" data-page="signup">
+          <header class="page-header">
+            <h2>What's your name?</h2>
+          </header>
+
+          <form id="signupForm" class="signup-form">
+            <label class="field">
+              <span class="sr-only">Enter your name</span>
+              <input
+                id="nameInput"
+                type="text"
+                maxlength="40"
+                autocomplete="name"
+                placeholder="Enter your name"
+                required
+              />
+            </label>
+
+            <button class="btn btn--primary" type="submit">Next &rarr;</button>
+          </form>
         </section>
 
         <section class="page page--goals" data-page="goals">
@@ -66,7 +88,7 @@
 
         <section class="page page--home" data-page="home">
           <header class="home-header">
-            <h2>Hey, Sleeper!</h2>
+            <h2 id="homeGreeting">Hey, Sleeper!</h2>
             <button class="btn btn--ghost btn--sm" type="button" data-go-to="goals">
               Edit goals
             </button>

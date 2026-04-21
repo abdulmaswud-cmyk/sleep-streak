@@ -1,4 +1,5 @@
 const appState = {
+  name: "Sleeper",
   bedtime: "22:00",
   wakeTime: "07:00",
   targetSleep: 9,
@@ -7,12 +8,15 @@ const appState = {
 
 const pages = Array.from(document.querySelectorAll("[data-page]"));
 const navButtons = Array.from(document.querySelectorAll("[data-go-to]"));
+const signupForm = document.querySelector("#signupForm");
+const nameInput = document.querySelector("#nameInput");
 const goalsForm = document.querySelector("#goalsForm");
 const bedtimeInput = document.querySelector("#bedtimeInput");
 const wakeTimeInput = document.querySelector("#wakeTimeInput");
 const targetSleepInput = document.querySelector("#targetSleepInput");
 const targetSleepValue = document.querySelector("#targetSleepValue");
 
+const greetingName = document.querySelector("#greetingName");
 const bedtimeGoal = document.querySelector("#bedtimeGoal");
 const wakeGoal = document.querySelector("#wakeGoal");
 const trackerGrid = document.querySelector("#trackerGrid");
@@ -133,6 +137,10 @@ function syncGoalsToHome() {
   wakeGoal.textContent = `Goal: ${appState.wakeTime}`;
 }
 
+function syncProfileToHome() {
+  greetingName.textContent = appState.name;
+}
+
 navButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const targetPage = button.dataset.goTo;
@@ -144,6 +152,14 @@ navButtons.forEach((button) => {
 
 targetSleepInput.addEventListener("input", updateTargetDisplay);
 
+signupForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const cleanName = nameInput.value.trim();
+  appState.name = cleanName || "Sleeper";
+  syncProfileToHome();
+  showPage("goals");
+});
+
 goalsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   appState.bedtime = bedtimeInput.value;
@@ -154,9 +170,11 @@ goalsForm.addEventListener("submit", (event) => {
 });
 
 function initialize() {
+  nameInput.value = appState.name;
   bedtimeInput.value = appState.bedtime;
   wakeTimeInput.value = appState.wakeTime;
   targetSleepInput.value = String(appState.targetSleep);
+  syncProfileToHome();
   updateTargetDisplay();
   syncGoalsToHome();
   renderTracker();
