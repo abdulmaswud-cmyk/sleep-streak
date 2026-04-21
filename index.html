@@ -121,26 +121,51 @@
           <article class="card tracker-card">
             <h3>Weekly Tracker</h3>
             <p class="subtle">
-              Tap past days to mark if you had a successful sleep streak
+              Streaks are auto-calculated when bedtime and wake check-ins are
+              each within 30 minutes of your goal time.
             </p>
 
             <div class="tracker-grid" id="trackerGrid"></div>
 
             <div class="tracker-legend">
-              <span class="legend-item legend-item--active">Streak</span>
-              <span class="legend-item">No data</span>
+              <span class="legend-item legend-item--active">Complete</span>
+              <span class="legend-item">Incomplete</span>
               <span class="legend-item legend-item--today">Today</span>
             </div>
           </article>
 
           <section class="checkins">
             <article class="card checkin-card">
-              <p>Check In for Bedtime</p>
-              <strong id="bedtimeGoal">Goal: 22:00</strong>
+              <div>
+                <p>Check In for Bedtime</p>
+                <strong id="bedtimeGoal">Goal: 22:00</strong>
+                <small id="bedtimeCheckStatus" class="check-status">
+                  Not checked in yet.
+                </small>
+              </div>
+              <button
+                id="bedtimeCheckButton"
+                class="btn btn--secondary check-action"
+                type="button"
+              >
+                Check now
+              </button>
             </article>
             <article class="card checkin-card">
-              <p>Check In for Wake Up</p>
-              <strong id="wakeGoal">Goal: 07:00</strong>
+              <div>
+                <p>Check In for Wake Up</p>
+                <strong id="wakeGoal">Goal: 07:00</strong>
+                <small id="wakeCheckStatus" class="check-status">
+                  Not checked in yet.
+                </small>
+              </div>
+              <button
+                id="wakeCheckButton"
+                class="btn btn--secondary check-action"
+                type="button"
+              >
+                Check now
+              </button>
             </article>
           </section>
 

@@ -3,7 +3,7 @@ const appState = {
   bedtime: "22:00",
   wakeTime: "07:00",
   targetSleep: 9,
-  streakDays: [false, false, false, false, false, false, false],
+  checkIns: [],
 };
 
 const pages = Array.from(document.querySelectorAll("[data-page]"));
@@ -19,6 +19,10 @@ const targetSleepValue = document.querySelector("#targetSleepValue");
 const homeGreeting = document.querySelector("#homeGreeting");
 const bedtimeGoal = document.querySelector("#bedtimeGoal");
 const wakeGoal = document.querySelector("#wakeGoal");
+const bedtimeStatus = document.querySelector("#bedtimeStatus");
+const wakeStatus = document.querySelector("#wakeStatus");
+const bedtimeCheckInButton = document.querySelector("#bedtimeCheckInButton");
+const wakeCheckInButton = document.querySelector("#wakeCheckInButton");
 const trackerGrid = document.querySelector("#trackerGrid");
 const currentStreak = document.querySelector("#currentStreak");
 const longestStreak = document.querySelector("#longestStreak");
@@ -61,6 +65,51 @@ function getWeekConfig() {
   return dates;
 }
 
+function getDayKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseTimeToMinutes(value) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return (hours * 60 + minutes) % (24 * 60);
+}
+
+function getMinuteDistance(a, b) {
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 24 * 60 - diff);
+}
+
+function upsertCheckIn(dayKey, patch) {
+  const existing = appState.checkIns.find((entry) => entry.dayKey === dayKey);
+  if (existing) {
+    Object.assign(existing, patch);
+    return;
+  }
+  appState.checkIns.push({
+    dayKey,
+    bedtimeOnTime: null,
+    wakeOnTime: null,
+    ...patch,
+  });
+}
+
+function getCheckInForDay(dayKey) {
+  return appState.checkIns.find((entry) => entry.dayKey === dayKey) || null;
+}
+
+function getWeekResults() {
+  const week = getWeekConfig();
+  return week.map((item) => {
+    const entry = getCheckInForDay(item.dayKey);
+    const complete =
+      Boolean(entry) && entry.bedtimeOnTime === true && entry.wakeOnTime === true;
+    return { ...item, complete, entry };
+  });
+}
+
 function computeStreakStats(days) {
   let current = 0;
   for (let i = days.length - 1; i >= 0; i -= 1) {
@@ -86,39 +135,30 @@ function computeStreakStats(days) {
 
 function renderTracker() {
   trackerGrid.innerHTML = "";
-  const config = getWeekConfig();
+  const config = getWeekResults();
 
-  config.forEach((item, index) => {
-    const cell = document.createElement("button");
+  config.forEach((item) => {
+    const cell = document.createElement("div");
     cell.className = "tracker-cell";
-    cell.type = "button";
     cell.innerHTML = `
       <span class="day">${item.day}</span>
       <span class="date">${item.date}</span>
     `;
-    cell.disabled = item.isToday;
     cell.classList.toggle("is-today", item.isToday);
-    cell.classList.toggle("is-done", appState.streakDays[index]);
+    cell.classList.toggle("is-done", item.complete);
     cell.setAttribute(
       "aria-label",
       `${item.day} ${item.date}${item.isToday ? " (today)" : ""}`
     );
-
-    if (!item.isToday) {
-      cell.addEventListener("click", () => {
-        appState.streakDays[index] = !appState.streakDays[index];
-        renderTracker();
-        updateStats();
-      });
-    }
 
     trackerGrid.appendChild(cell);
   });
 }
 
 function updateStats() {
-  const stats = computeStreakStats(appState.streakDays);
-  const completedDays = appState.streakDays.filter(Boolean).length;
+  const completeWeek = getWeekResults().map((item) => item.complete);
+  const stats = computeStreakStats(completeWeek);
+  const completedDays = completeWeek.filter(Boolean).length;
   const points = completedDays * 100;
 
   currentStreak.textContent = String(stats.current);
@@ -149,6 +189,44 @@ function updateBottomNav(pageName) {
   });
 }
 
+function formatCheckInStatus(type) {
+  const todayKey = getDayKey(new Date());
+  const entry = getCheckInForDay(todayKey);
+  const flag = entry ? entry[`${type}OnTime`] : null;
+
+  if (flag === true) {
+    return "Checked in on time";
+  }
+  if (flag === false) {
+    return "Checked in outside ±30 min";
+  }
+  return "Not checked in yet";
+}
+
+function updateCheckInStatusUi() {
+  bedtimeStatus.textContent = formatCheckInStatus("bedtime");
+  wakeStatus.textContent = formatCheckInStatus("wake");
+}
+
+function handleTimedCheckIn(type) {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const goalMinutes = parseTimeToMinutes(
+    type === "bedtime" ? appState.bedtime : appState.wakeTime
+  );
+  const dayKey = getDayKey(now);
+  const onTime = getMinuteDistance(nowMinutes, goalMinutes) <= 30;
+
+  upsertCheckIn(dayKey, {
+    [`${type}OnTime`]: onTime,
+    [`${type}CheckedAt`]: now.toISOString(),
+  });
+
+  updateCheckInStatusUi();
+  renderTracker();
+  updateStats();
+}
+
 navButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const targetPage = button.dataset.goTo;
@@ -159,6 +237,8 @@ navButtons.forEach((button) => {
 });
 
 targetSleepInput.addEventListener("input", updateTargetDisplay);
+bedtimeCheckInButton.addEventListener("click", () => handleTimedCheckIn("bedtime"));
+wakeCheckInButton.addEventListener("click", () => handleTimedCheckIn("wake"));
 
 signupForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -185,6 +265,7 @@ function initialize() {
   syncProfileToHome();
   updateTargetDisplay();
   syncGoalsToHome();
+  updateCheckInStatusUi();
   renderTracker();
   updateStats();
   updateBottomNav("home");

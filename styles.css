@@ -419,7 +419,6 @@ h1 {
   background: #f7edff;
   font: inherit;
   font-size: 0.71rem;
-  cursor: pointer;
   min-height: 3.2rem;
 }
 
@@ -436,16 +435,6 @@ h1 {
 
 .tracker-cell.is-today {
   outline: 2px solid #8364b5;
-  cursor: default;
-}
-
-.tracker-cell:disabled {
-  opacity: 0.95;
-}
-
-.tracker-cell:focus-visible {
-  outline: 2px solid #69409f;
-  outline-offset: 1px;
 }
 
 .tracker-legend {
@@ -479,9 +468,8 @@ h1 {
 }
 
 .checkin-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: grid;
+  gap: 0.55rem;
 }
 
 .checkin-card p {
@@ -492,6 +480,34 @@ h1 {
 .checkin-card strong {
   color: #5e4485;
   font-size: 0.85rem;
+}
+
+.checkin-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.checkin-status {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #7e689d;
+}
+
+.checkin-status.is-success {
+  color: #3f9a5f;
+}
+
+.checkin-status.is-failed {
+  color: #b0566f;
+}
+
+.btn--checkin {
+  width: 100%;
+  margin-top: 0;
+  padding: 0.75rem 0.95rem;
+  font-size: 0.88rem;
 }
 
 .bottom-nav {
