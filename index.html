@@ -271,6 +271,9 @@
             <p><span>Theme</span><strong id="settingsThemeValue">Twilight</strong></p>
             <p><span>Reminder</span><strong id="settingsReminderValue">21:45</strong></p>
             <p><span>Nudges</span><strong id="settingsNudgesValue">Enabled</strong></p>
+            <p><span>Bedtime alarm</span><strong id="settingsBedtimeAlarmValue">Default chime</strong></p>
+            <p><span>Wake alarm</span><strong id="settingsWakeAlarmValue">Default chime</strong></p>
+            <p><span>Notifications</span><strong id="settingsNotificationValue">Not enabled</strong></p>
           </article>
           <form id="settingsForm" class="card settings-form">
             <label class="settings-field">
@@ -292,12 +295,38 @@
               <input id="reminderTimeInput" type="time" />
             </label>
 
+            <label class="settings-field">
+              <span>Import alarm sounds from your folder</span>
+              <input id="alarmFilesInput" type="file" accept="audio/*" multiple />
+            </label>
+
+            <label class="settings-field">
+              <span>Bedtime alarm sound</span>
+              <select id="bedtimeAlarmSelect"></select>
+            </label>
+            <button class="btn btn--secondary" id="testBedtimeAlarmButton" type="button">
+              Test bedtime alarm
+            </button>
+
+            <label class="settings-field">
+              <span>Wake alarm sound</span>
+              <select id="wakeAlarmSelect"></select>
+            </label>
+            <button class="btn btn--secondary" id="testWakeAlarmButton" type="button">
+              Test wake alarm
+            </button>
+
+            <button class="btn btn--secondary" id="notificationPermissionButton" type="button">
+              Enable notifications
+            </button>
+
             <label class="toggle-row">
               <input id="nudgesToggle" type="checkbox" />
               <span>Show motivational nudges on Home</span>
             </label>
 
             <button class="btn btn--primary" type="submit">Save Preferences</button>
+            <p class="settings-help" id="alarmImportFeedback"></p>
             <p class="save-feedback" id="settingsSaveFeedback" aria-live="polite"></p>
           </form>
           <button class="btn btn--ghost" type="button" data-go-to="home">
