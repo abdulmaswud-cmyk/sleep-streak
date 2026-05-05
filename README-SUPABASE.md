@@ -29,13 +29,17 @@ This creates:
 
 ### 2) Environment values
 
-The project includes `.env.local` with:
+The project now uses `.env.local` keys:
 
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-For this static HTML app, the runtime values are read in `supabaseClient.js`.
-If you move to a bundler (Vite/Next/etc.), keep these values in your environment config and pass them into the client init.
+`supabaseClient.js` reads these at runtime from:
+
+- `window.__ENV__.NEXT_PUBLIC_SUPABASE_URL`
+- `window.__ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+To avoid hardcoded credentials in the client, ensure your runtime injects these values into `window.__ENV__` before `supabaseClient.js` executes.
 
 ---
 
