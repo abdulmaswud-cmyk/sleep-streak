@@ -814,6 +814,41 @@ select:focus-visible {
   gap: 0.7rem;
 }
 
+.settings-stack {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.settings-stack .settings-section,
+.settings-stack .settings-actions-card {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.settings-field--full {
+  grid-column: 1 / -1;
+}
+
+.alarm-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.btn--inline {
+  width: auto;
+  margin-top: 0;
+  padding: 0.72rem 0.9rem;
+  white-space: nowrap;
+}
+
+.settings-actions-card {
+  display: grid;
+  gap: 0.55rem;
+}
+
 .settings-grid p {
   margin: 0;
   display: flex;
