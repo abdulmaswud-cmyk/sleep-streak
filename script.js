@@ -1,18 +1,30 @@
-const appState = {
-  name: "Sleeper",
+const DEFAULT_STATE = {
   bedtime: "22:00",
   wakeTime: "07:00",
   targetSleep: 9,
   checkIns: [],
+  name: "Sleeper",
   theme: "twilight",
   reminderTime: "21:45",
   nudgesEnabled: true,
-  bedtimeAlarm: "",
-  wakeAlarm: "",
+  bedtimeAlarm: "default-chime",
+  wakeAlarm: "default-bell",
 };
+
+const appState = { ...DEFAULT_STATE };
+let currentUser = null;
 
 const pages = Array.from(document.querySelectorAll("[data-page]"));
 const navButtons = Array.from(document.querySelectorAll("[data-go-to]"));
+
+const authForm = document.querySelector("#authForm");
+const authEmailInput = document.querySelector("#authEmailInput");
+const authPasswordInput = document.querySelector("#authPasswordInput");
+const signInButton = document.querySelector("#signInButton");
+const signUpButton = document.querySelector("#signUpButton");
+const authFeedback = document.querySelector("#authFeedback");
+const authStatus = document.querySelector("#authStatus");
+
 const signupForm = document.querySelector("#signupForm");
 const nameInput = document.querySelector("#nameInput");
 const goalsForm = document.querySelector("#goalsForm");
@@ -29,6 +41,9 @@ const bedtimeStatus = document.querySelector("#bedtimeCheckStatus");
 const wakeStatus = document.querySelector("#wakeCheckStatus");
 const bedtimeCheckButton = document.querySelector("#bedtimeCheckButton");
 const wakeCheckButton = document.querySelector("#wakeCheckButton");
+const clearTodayButton = document.querySelector("#clearTodayButton");
+const homeSignOutButton = document.querySelector("#homeSignOutButton");
+
 const trackerGrid = document.querySelector("#trackerGrid");
 const currentStreak = document.querySelector("#currentStreak");
 const longestStreak = document.querySelector("#longestStreak");
@@ -44,6 +59,7 @@ const leaderboardYouLabel = document.querySelector("#leaderboardYouLabel");
 const leaderboardYouPoints = document.querySelector("#leaderboardYouPoints");
 const leaderboardRankHint = document.querySelector("#leaderboardRankHint");
 
+const settingsEmailValue = document.querySelector("#settingsEmailValue");
 const settingsNameValue = document.querySelector("#settingsNameValue");
 const settingsBedtimeValue = document.querySelector("#settingsBedtimeValue");
 const settingsWakeValue = document.querySelector("#settingsWakeValue");
@@ -54,22 +70,30 @@ const settingsNudgesValue = document.querySelector("#settingsNudgesValue");
 const settingsBedtimeAlarmValue = document.querySelector("#settingsBedtimeAlarmValue");
 const settingsWakeAlarmValue = document.querySelector("#settingsWakeAlarmValue");
 const settingsNotificationValue = document.querySelector("#settingsNotificationValue");
+
 const settingsForm = document.querySelector("#settingsForm");
 const settingsNameInput = document.querySelector("#settingsNameInput");
 const themeSelect = document.querySelector("#themeSelect");
 const reminderTimeInput = document.querySelector("#reminderTimeInput");
 const nudgesToggle = document.querySelector("#nudgesToggle");
-const alarmFilesInput = document.querySelector("#alarmFilesInput");
 const bedtimeAlarmSelect = document.querySelector("#bedtimeAlarmSelect");
 const wakeAlarmSelect = document.querySelector("#wakeAlarmSelect");
+const alarmFilesInput = document.querySelector("#alarmFilesInput");
+const settingsSignOutButton = document.querySelector("#settingsSignOutButton");
+const settingsSaveFeedback = document.querySelector("#settingsSaveFeedback");
 const testBedtimeAlarmButton = document.querySelector("#testBedtimeAlarmButton");
 const testWakeAlarmButton = document.querySelector("#testWakeAlarmButton");
 const notificationPermissionButton = document.querySelector("#notificationPermissionButton");
 const alarmImportFeedback = document.querySelector("#alarmImportFeedback");
-const settingsSaveFeedback = document.querySelector("#settingsSaveFeedback");
+
+const dbLoading = document.querySelector("#dbLoading");
+const dbError = document.querySelector("#dbError");
+const retryLoadButton = document.querySelector("#retryLoadButton");
 
 let alarmOptions = [];
 let scheduleTimerId = null;
+let dbReady = false;
+
 const lastNotificationMinuteByType = {
   bedtime: "",
   wake: "",
@@ -81,40 +105,20 @@ const builtInAlarmOptions = [
   { value: "default-soft", label: "Default Soft Tone", frequency: 540, durationMs: 360 },
 ];
 
-function getNotificationStatusLabel() {
-  if (!("Notification" in window)) {
-    return "Not supported";
-  }
-  if (Notification.permission === "granted") {
-    return "Enabled";
-  }
-  if (Notification.permission === "denied") {
-    return "Blocked";
-  }
-  return "Not enabled";
-}
-
 function showPage(pageName) {
   const nextPage = pages.find((page) => page.dataset.page === pageName);
-  if (!nextPage) {
-    return;
-  }
+  if (!nextPage) return;
 
   pages.forEach((page) => {
     page.classList.toggle("is-active", page.dataset.page === pageName);
   });
 
   nextPage.classList.add("is-entering");
-  window.setTimeout(() => {
-    nextPage.classList.remove("is-entering");
-  }, 220);
+  window.setTimeout(() => nextPage.classList.remove("is-entering"), 220);
 
   updateBottomNav(pageName);
-  if (pageName === "history") {
-    renderHistory();
-  } else if (pageName === "settings") {
-    syncSettingsForm();
-  }
+  if (pageName === "history") renderHistory();
+  if (pageName === "settings") syncSettingsForm();
 }
 
 function updateBottomNav(pageName) {
@@ -156,9 +160,7 @@ function getMinuteDistance(a, b) {
 }
 
 function formatTimeLabel(isoValue) {
-  if (!isoValue) {
-    return "";
-  }
+  if (!isoValue) return "";
   const date = new Date(isoValue);
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
@@ -189,10 +191,10 @@ function getWeekConfig() {
 }
 
 function getCheckInForDay(dayKey) {
-  return appState.checkIns.find((entry) => entry.dayKey === dayKey) || null;
+  return appState.checkIns.find((entry) => entry.day_key === dayKey) || null;
 }
 
-function upsertCheckIn(dayKey, patch) {
+function upsertCheckInLocal(dayKey, patch) {
   const current = getCheckInForDay(dayKey);
   if (current) {
     Object.assign(current, patch);
@@ -200,11 +202,11 @@ function upsertCheckIn(dayKey, patch) {
   }
 
   appState.checkIns.push({
-    dayKey,
-    bedtimeOnTime: null,
-    wakeOnTime: null,
-    bedtimeCheckedAt: null,
-    wakeCheckedAt: null,
+    day_key: dayKey,
+    bedtime_on_time: null,
+    wake_on_time: null,
+    bedtime_checked_at: null,
+    wake_checked_at: null,
     ...patch,
   });
 }
@@ -213,7 +215,7 @@ function getWeekResults() {
   const week = getWeekConfig();
   return week.map((day) => {
     const entry = getCheckInForDay(day.dayKey);
-    const complete = Boolean(entry) && entry.bedtimeOnTime === true && entry.wakeOnTime === true;
+    const complete = Boolean(entry) && entry.bedtime_on_time === true && entry.wake_on_time === true;
     return { ...day, entry, complete };
   });
 }
@@ -221,9 +223,7 @@ function getWeekResults() {
 function computeStreakStats(completions) {
   let current = 0;
   for (let i = completions.length - 1; i >= 0; i -= 1) {
-    if (!completions[i]) {
-      break;
-    }
+    if (!completions[i]) break;
     current += 1;
   }
 
@@ -252,22 +252,16 @@ function applyTheme() {
 }
 
 function buildMotivationLine(completedDays) {
-  if (!appState.nudgesEnabled) {
-    return "Motivational nudges are turned off.";
-  }
-  if (completedDays >= 5) {
-    return "Amazing consistency - keep protecting your sleep rhythm.";
-  }
-  if (completedDays >= 2) {
-    return "Nice momentum. Stay within your check-in windows tonight.";
-  }
+  if (!appState.nudgesEnabled) return "Motivational nudges are turned off.";
+  if (completedDays >= 5) return "Amazing consistency - keep protecting your sleep rhythm.";
+  if (completedDays >= 2) return "Nice momentum. Stay within your check-in windows tonight.";
   return "One good night at a time - you've got this.";
 }
 
 function syncProfileToHome(completedDays = 0) {
   homeGreeting.textContent = `Hey, ${appState.name}!`;
   motivationLine.textContent = buildMotivationLine(completedDays);
-  motivationLine.classList.toggle("is-hidden", !appState.nudgesEnabled);
+  motivationLine.classList.toggle("hidden", !appState.nudgesEnabled);
 }
 
 function syncGoalsToHome() {
@@ -276,24 +270,40 @@ function syncGoalsToHome() {
   reminderText.textContent = `Reminder time: ${appState.reminderTime}`;
 }
 
+function getAlarmLabel(value) {
+  const match = alarmOptions.find((option) => option.value === value);
+  return match ? match.label : "Not selected";
+}
+
+function getNotificationStatusLabel() {
+  if (!("Notification" in window)) return "Unavailable";
+  if (Notification.permission === "granted") return "Enabled";
+  if (Notification.permission === "denied") return "Blocked";
+  return "Not enabled";
+}
+
 function syncSettingsSummary(points) {
+  settingsEmailValue.textContent = currentUser?.email || "Not logged in";
   settingsNameValue.textContent = appState.name;
   settingsBedtimeValue.textContent = appState.bedtime;
   settingsWakeValue.textContent = appState.wakeTime;
   settingsTargetValue.textContent = formatSleepHours(appState.targetSleep);
-  settingsThemeValue.textContent = appState.theme === "midnight" ? "Midnight Blue" : appState.theme === "dawn" ? "Dawn Glow" : "Twilight Purple";
+  settingsThemeValue.textContent =
+    appState.theme === "midnight"
+      ? "Midnight Blue"
+      : appState.theme === "dawn"
+        ? "Dawn Glow"
+        : "Twilight Purple";
   settingsReminderValue.textContent = appState.reminderTime;
   settingsNudgesValue.textContent = appState.nudgesEnabled ? "Enabled" : "Disabled";
+  settingsBedtimeAlarmValue.textContent = getAlarmLabel(appState.bedtimeAlarm);
+  settingsWakeAlarmValue.textContent = getAlarmLabel(appState.wakeAlarm);
+  settingsNotificationValue.textContent = getNotificationStatusLabel();
 
   leaderboardYouLabel.textContent = appState.name;
   leaderboardYouPoints.textContent = `${points} pts`;
   leaderboardRankHint.textContent =
     points >= 1900 ? "You're close to the top!" : "Keep checking in to climb the board.";
-}
-
-function getAlarmLabel(value) {
-  const match = alarmOptions.find((option) => option.value === value);
-  return match ? match.label : "Not selected";
 }
 
 function notify(message) {
@@ -358,30 +368,18 @@ function runAlarmSchedulerTick() {
     triggerAlarm("wake");
     lastNotificationMinuteByType.wake = minuteLabel;
   }
-  if (minuteLabel !== appState.bedtime) {
-    lastNotificationMinuteByType.bedtime = "";
-  }
-  if (minuteLabel !== appState.wakeTime) {
-    lastNotificationMinuteByType.wake = "";
-  }
+  if (minuteLabel !== appState.bedtime) lastNotificationMinuteByType.bedtime = "";
+  if (minuteLabel !== appState.wakeTime) lastNotificationMinuteByType.wake = "";
 }
 
 function startAlarmScheduler() {
-  if (scheduleTimerId) {
-    window.clearInterval(scheduleTimerId);
-  }
+  if (scheduleTimerId) window.clearInterval(scheduleTimerId);
   scheduleTimerId = window.setInterval(runAlarmSchedulerTick, 1000);
 }
 
 function populateAlarmSelectors() {
-  if (!bedtimeAlarmSelect || !wakeAlarmSelect) {
-    return;
-  }
-
   const buildOptionsMarkup = () =>
-    alarmOptions
-      .map((option) => `<option value="${option.value}">${option.label}</option>`)
-      .join("");
+    alarmOptions.map((option) => `<option value="${option.value}">${option.label}</option>`).join("");
   bedtimeAlarmSelect.innerHTML = buildOptionsMarkup();
   wakeAlarmSelect.innerHTML = buildOptionsMarkup();
 }
@@ -403,7 +401,7 @@ async function loadAlarmOptions() {
       }
     }
   } catch (error) {
-    // Ignore missing manifest and keep built-in alarms.
+    // ignore optional manifest loading
   }
 
   alarmOptions = [...builtInAlarmOptions, ...discovered];
@@ -425,31 +423,28 @@ function renderTracker() {
     cell.classList.toggle("is-today", item.isToday);
     cell.classList.toggle("is-done", item.complete);
     cell.setAttribute("aria-label", `${item.day} ${item.date}${item.isToday ? " (today)" : ""}`);
-    cell.innerHTML = `
-      <span class="day">${item.day}</span>
-      <span class="date">${item.date}</span>
-    `;
+    cell.innerHTML = `<span class="day">${item.day}</span><span class="date">${item.date}</span>`;
     trackerGrid.appendChild(cell);
   });
 }
 
 function applyStatusClass(element, value) {
   element.classList.remove("is-success", "is-failed");
-  if (value === true) {
-    element.classList.add("is-success");
-  } else if (value === false) {
-    element.classList.add("is-failed");
-  }
+  if (value === true) element.classList.add("is-success");
+  else if (value === false) element.classList.add("is-failed");
 }
 
 function updateCheckInStatusUi() {
   const todayEntry = getCheckInForDay(getDayKey(new Date()));
-  const bedtimeValue = todayEntry?.bedtimeOnTime;
-  const wakeValue = todayEntry?.wakeOnTime;
-  const bedtimeSuffix = todayEntry?.bedtimeCheckedAt
-    ? ` at ${formatTimeLabel(todayEntry.bedtimeCheckedAt)}`
+  const bedtimeValue = todayEntry?.bedtime_on_time;
+  const wakeValue = todayEntry?.wake_on_time;
+
+  const bedtimeSuffix = todayEntry?.bedtime_checked_at
+    ? ` at ${formatTimeLabel(todayEntry.bedtime_checked_at)}`
     : "";
-  const wakeSuffix = todayEntry?.wakeCheckedAt ? ` at ${formatTimeLabel(todayEntry.wakeCheckedAt)}` : "";
+  const wakeSuffix = todayEntry?.wake_checked_at
+    ? ` at ${formatTimeLabel(todayEntry.wake_checked_at)}`
+    : "";
 
   bedtimeStatus.textContent =
     bedtimeValue === true
@@ -457,6 +452,7 @@ function updateCheckInStatusUi() {
       : bedtimeValue === false
         ? `Outside ±30 min${bedtimeSuffix}`
         : "Not checked in yet.";
+
   wakeStatus.textContent =
     wakeValue === true
       ? `On time${wakeSuffix}`
@@ -469,12 +465,8 @@ function updateCheckInStatusUi() {
 }
 
 function formatBooleanLabel(value, checkedAt) {
-  if (value === true) {
-    return `On time${checkedAt ? ` (${formatTimeLabel(checkedAt)})` : ""}`;
-  }
-  if (value === false) {
-    return `Outside window${checkedAt ? ` (${formatTimeLabel(checkedAt)})` : ""}`;
-  }
+  if (value === true) return `On time${checkedAt ? ` (${formatTimeLabel(checkedAt)})` : ""}`;
+  if (value === false) return `Outside window${checkedAt ? ` (${formatTimeLabel(checkedAt)})` : ""}`;
   return "No check-in";
 }
 
@@ -492,8 +484,8 @@ function renderHistory() {
         </span>
       </div>
       <p>
-        Bedtime: ${formatBooleanLabel(item.entry?.bedtimeOnTime, item.entry?.bedtimeCheckedAt)}
-        · Wake: ${formatBooleanLabel(item.entry?.wakeOnTime, item.entry?.wakeCheckedAt)}
+        Bedtime: ${formatBooleanLabel(item.entry?.bedtime_on_time, item.entry?.bedtime_checked_at)}
+        · Wake: ${formatBooleanLabel(item.entry?.wake_on_time, item.entry?.wake_checked_at)}
       </p>
     `;
     historyList.appendChild(li);
@@ -506,14 +498,11 @@ function updateStats() {
   const stats = computeStreakStats(completions);
   const completedDays = completions.filter(Boolean).length;
   const points = completedDays * 100;
+
   const onTimeCount = week.reduce((count, day) => {
     let total = count;
-    if (day.entry?.bedtimeOnTime === true) {
-      total += 1;
-    }
-    if (day.entry?.wakeOnTime === true) {
-      total += 1;
-    }
+    if (day.entry?.bedtime_on_time === true) total += 1;
+    if (day.entry?.wake_on_time === true) total += 1;
     return total;
   }, 0);
 
@@ -549,101 +538,339 @@ function syncSettingsForm() {
   wakeAlarmSelect.value = appState.wakeAlarm;
 }
 
-function handleTimedCheckIn(type) {
+function showFeedback(el, message, isSuccess = true) {
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle("is-visible", true);
+  el.style.color = isSuccess ? "#4f9f6f" : "#b0566f";
+}
+
+function clearFeedback(el) {
+  if (!el) return;
+  el.textContent = "";
+  el.classList.remove("is-visible");
+  el.style.removeProperty("color");
+}
+
+async function upsertProfile() {
+  if (!currentUser || !dbReady) return;
+
+  const payload = {
+    user_id: currentUser.id,
+    email: currentUser.email,
+    display_name: appState.name,
+    bedtime_goal: appState.bedtime,
+    wake_goal: appState.wakeTime,
+    target_sleep_hours: appState.targetSleep,
+    theme: appState.theme,
+    reminder_time: appState.reminderTime,
+    nudges_enabled: appState.nudgesEnabled,
+    bedtime_alarm: appState.bedtimeAlarm,
+    wake_alarm: appState.wakeAlarm,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await window.supabaseClient
+    .from("user_profiles")
+    .upsert(payload, { onConflict: "user_id" });
+
+  if (error) throw error;
+}
+
+async function saveCheckInToDb(dayKey, patch) {
+  if (!currentUser || !dbReady) return;
+
+  const current = getCheckInForDay(dayKey);
+  const payload = {
+    user_id: currentUser.id,
+    day_key: dayKey,
+    bedtime_on_time: patch.bedtime_on_time ?? current?.bedtime_on_time ?? null,
+    wake_on_time: patch.wake_on_time ?? current?.wake_on_time ?? null,
+    bedtime_checked_at: patch.bedtime_checked_at ?? current?.bedtime_checked_at ?? null,
+    wake_checked_at: patch.wake_checked_at ?? current?.wake_checked_at ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await window.supabaseClient
+    .from("sleep_checkins")
+    .upsert(payload, { onConflict: "user_id,day_key" })
+    .select()
+    .single();
+
+  if (error) throw error;
+  upsertCheckInLocal(dayKey, data);
+}
+
+async function clearTodayCheckInsInDb() {
+  if (!currentUser || !dbReady) return;
+  const dayKey = getDayKey(new Date());
+  const { error } = await window.supabaseClient
+    .from("sleep_checkins")
+    .delete()
+    .eq("user_id", currentUser.id)
+    .eq("day_key", dayKey);
+
+  if (error) throw error;
+  appState.checkIns = appState.checkIns.filter((entry) => entry.day_key !== dayKey);
+}
+
+async function loadProfileAndCheckIns() {
+  if (!currentUser || !dbReady) return;
+
+  const [{ data: profile, error: profileError }, { data: checkins, error: checkinsError }] =
+    await Promise.all([
+      window.supabaseClient
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle(),
+      window.supabaseClient
+        .from("sleep_checkins")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("day_key", { ascending: true }),
+    ]);
+
+  if (profileError) throw profileError;
+  if (checkinsError) throw checkinsError;
+
+  Object.assign(appState, { ...DEFAULT_STATE, ...appState });
+
+  if (profile) {
+    appState.name = profile.display_name || appState.name;
+    appState.bedtime = profile.bedtime_goal || appState.bedtime;
+    appState.wakeTime = profile.wake_goal || appState.wakeTime;
+    appState.targetSleep = Number(profile.target_sleep_hours ?? appState.targetSleep);
+    appState.theme = profile.theme || appState.theme;
+    appState.reminderTime = profile.reminder_time || appState.reminderTime;
+    appState.nudgesEnabled = profile.nudges_enabled ?? appState.nudgesEnabled;
+    appState.bedtimeAlarm = profile.bedtime_alarm || appState.bedtimeAlarm;
+    appState.wakeAlarm = profile.wake_alarm || appState.wakeAlarm;
+  }
+
+  appState.checkIns = Array.isArray(checkins) ? checkins : [];
+
+  applyTheme();
+  bedtimeInput.value = appState.bedtime;
+  wakeTimeInput.value = appState.wakeTime;
+  targetSleepInput.value = String(appState.targetSleep);
+  updateTargetDisplay();
+  syncGoalsToHome();
+  syncSettingsForm();
+  updateCheckInStatusUi();
+  renderTracker();
+  renderHistory();
+  updateStats();
+  authStatus.textContent = currentUser.email || "Logged in";
+}
+
+async function handleTimedCheckIn(type) {
   const now = new Date();
   const dayKey = getDayKey(now);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const goalMinutes = parseTimeToMinutes(type === "bedtime" ? appState.bedtime : appState.wakeTime);
   const onTime = getMinuteDistance(nowMinutes, goalMinutes) <= 30;
 
-  upsertCheckIn(dayKey, {
-    [`${type}OnTime`]: onTime,
-    [`${type}CheckedAt`]: now.toISOString(),
-  });
+  const patch =
+    type === "bedtime"
+      ? {
+          bedtime_on_time: onTime,
+          bedtime_checked_at: now.toISOString(),
+        }
+      : {
+          wake_on_time: onTime,
+          wake_checked_at: now.toISOString(),
+        };
 
-  updateCheckInStatusUi();
-  renderTracker();
-  updateStats();
-  renderHistory();
+  try {
+    await saveCheckInToDb(dayKey, patch);
+    updateCheckInStatusUi();
+    renderTracker();
+    updateStats();
+    renderHistory();
+  } catch (error) {
+    showFeedback(settingsSaveFeedback, `Could not save check-in: ${error.message}`, false);
+  }
 }
 
-navButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const targetPage = button.dataset.goTo;
-    if (targetPage) {
-      showPage(targetPage);
-    }
-  });
-});
+async function handleAuthAction(type) {
+  clearFeedback(authFeedback);
+  const email = authEmailInput.value.trim();
+  const password = authPasswordInput.value;
 
-targetSleepInput.addEventListener("input", updateTargetDisplay);
-bedtimeCheckButton.addEventListener("click", () => handleTimedCheckIn("bedtime"));
-wakeCheckButton.addEventListener("click", () => handleTimedCheckIn("wake"));
-
-signupForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  appState.name = nameInput.value.trim() || "Sleeper";
-  syncProfileToHome();
-  showPage("goals");
-});
-
-goalsForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const previousBedtime = appState.bedtime;
-  const previousAutoReminder = offsetTime(previousBedtime, -15);
-
-  appState.bedtime = bedtimeInput.value;
-  appState.wakeTime = wakeTimeInput.value;
-  appState.targetSleep = Number(targetSleepInput.value);
-  if (!appState.reminderTime || appState.reminderTime === previousAutoReminder) {
-    appState.reminderTime = offsetTime(appState.bedtime, -15);
+  if (!email || !password) {
+    showFeedback(authFeedback, "Email and password are required.", false);
+    return;
   }
 
-  syncGoalsToHome();
-  updateStats();
-  showPage("home");
-});
+  try {
+    if (type === "signup") {
+      const { error } = await window.supabaseClient.auth.signUp({ email, password });
+      if (error) throw error;
+      showFeedback(authFeedback, "Signup successful. Check your email if confirmation is required.");
+    } else {
+      const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      showFeedback(authFeedback, "Logged in successfully.");
+    }
+  } catch (error) {
+    showFeedback(authFeedback, error.message, false);
+  }
+}
 
-settingsForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  appState.name = settingsNameInput.value.trim() || "Sleeper";
-  appState.theme = themeSelect.value;
-  appState.reminderTime = reminderTimeInput.value || offsetTime(appState.bedtime, -15);
-  appState.nudgesEnabled = nudgesToggle.checked;
-  appState.bedtimeAlarm = bedtimeAlarmSelect.value;
-  appState.wakeAlarm = wakeAlarmSelect.value;
+async function signOut() {
+  await window.supabaseClient.auth.signOut();
+}
 
-  applyTheme();
-  syncGoalsToHome();
-  updateStats();
-  syncSettingsForm();
+function bindEvents() {
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetPage = button.dataset.goTo;
+      if (targetPage) showPage(targetPage);
+    });
+  });
 
-  settingsSaveFeedback.textContent = "Preferences saved.";
-  window.setTimeout(() => {
-    settingsSaveFeedback.textContent = "";
-  }, 1800);
-});
+  signInButton.addEventListener("click", () => handleAuthAction("signin"));
+  signUpButton.addEventListener("click", () => handleAuthAction("signup"));
+  authForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    handleAuthAction("signin");
+  });
 
-if (testBedtimeAlarmButton) {
-  testBedtimeAlarmButton.addEventListener("click", () => {
-    playAlarmByValue(bedtimeAlarmSelect.value);
+  signupForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    appState.name = nameInput.value.trim() || "Sleeper";
+    syncProfileToHome();
+    try {
+      await upsertProfile();
+      showPage("goals");
+    } catch (error) {
+      showFeedback(settingsSaveFeedback, `Failed to save name: ${error.message}`, false);
+    }
+  });
+
+  targetSleepInput.addEventListener("input", updateTargetDisplay);
+
+  goalsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const previousBedtime = appState.bedtime;
+    const previousAutoReminder = offsetTime(previousBedtime, -15);
+
+    appState.bedtime = bedtimeInput.value;
+    appState.wakeTime = wakeTimeInput.value;
+    appState.targetSleep = Number(targetSleepInput.value);
+    if (!appState.reminderTime || appState.reminderTime === previousAutoReminder) {
+      appState.reminderTime = offsetTime(appState.bedtime, -15);
+    }
+
+    syncGoalsToHome();
+    updateStats();
+
+    try {
+      await upsertProfile();
+      showPage("home");
+    } catch (error) {
+      showFeedback(settingsSaveFeedback, `Failed to save goals: ${error.message}`, false);
+    }
+  });
+
+  settingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    appState.name = settingsNameInput.value.trim() || "Sleeper";
+    appState.theme = themeSelect.value;
+    appState.reminderTime = reminderTimeInput.value || offsetTime(appState.bedtime, -15);
+    appState.nudgesEnabled = nudgesToggle.checked;
+    appState.bedtimeAlarm = bedtimeAlarmSelect.value;
+    appState.wakeAlarm = wakeAlarmSelect.value;
+
+    applyTheme();
+    syncGoalsToHome();
+    syncSettingsForm();
+    updateStats();
+
+    try {
+      await upsertProfile();
+      showFeedback(settingsSaveFeedback, "Preferences saved.");
+      window.setTimeout(() => clearFeedback(settingsSaveFeedback), 1800);
+    } catch (error) {
+      showFeedback(settingsSaveFeedback, `Failed to save settings: ${error.message}`, false);
+    }
+  });
+
+  bedtimeCheckButton.addEventListener("click", () => handleTimedCheckIn("bedtime"));
+  wakeCheckButton.addEventListener("click", () => handleTimedCheckIn("wake"));
+
+  clearTodayButton.addEventListener("click", async () => {
+    try {
+      await clearTodayCheckInsInDb();
+      updateCheckInStatusUi();
+      renderTracker();
+      updateStats();
+      renderHistory();
+    } catch (error) {
+      showFeedback(settingsSaveFeedback, `Could not clear today's check-ins: ${error.message}`, false);
+    }
+  });
+
+  homeSignOutButton.addEventListener("click", signOut);
+  settingsSignOutButton.addEventListener("click", signOut);
+
+  testBedtimeAlarmButton.addEventListener("click", () => playAlarmByValue(bedtimeAlarmSelect.value));
+  testWakeAlarmButton.addEventListener("click", () => playAlarmByValue(wakeAlarmSelect.value));
+
+  notificationPermissionButton.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+      showFeedback(settingsSaveFeedback, "Notifications are not supported in this browser.", false);
+      return;
+    }
+    const result = await Notification.requestPermission();
+    showFeedback(
+      settingsSaveFeedback,
+      result === "granted"
+        ? "Notifications enabled."
+        : result === "denied"
+          ? "Notifications blocked by browser."
+          : "Notification permission dismissed.",
+      result === "granted"
+    );
+    updateStats();
+  });
+
+  alarmFilesInput.addEventListener("change", () => {
+    const files = Array.from(alarmFilesInput.files || []).filter((file) => file.type.startsWith("audio/"));
+    if (!files.length) {
+      alarmImportFeedback.textContent = "No audio files selected.";
+      return;
+    }
+
+    const imported = files.map((file, index) => ({
+      value: `upload-${Date.now()}-${index}`,
+      label: file.name,
+      filePath: URL.createObjectURL(file),
+    }));
+
+    alarmOptions = [...alarmOptions, ...imported];
+    populateAlarmSelectors();
+
+    if (!appState.bedtimeAlarm && alarmOptions.length) appState.bedtimeAlarm = alarmOptions[0].value;
+    if (!appState.wakeAlarm && alarmOptions.length) appState.wakeAlarm = alarmOptions[0].value;
+
+    syncSettingsForm();
+    updateStats();
+    alarmImportFeedback.textContent = `Imported ${imported.length} alarm sound${imported.length > 1 ? "s" : ""}.`;
+  });
+
+  retryLoadButton.addEventListener("click", async () => {
+    await bootstrapFromAuth();
   });
 }
 
-if (testWakeAlarmButton) {
-  testWakeAlarmButton.addEventListener("click", () => {
-    playAlarmByValue(wakeAlarmSelect.value);
-  });
-}
-
-function initialize() {
+function initializeBaseUi() {
   nameInput.value = appState.name;
   bedtimeInput.value = appState.bedtime;
   wakeTimeInput.value = appState.wakeTime;
   targetSleepInput.value = String(appState.targetSleep);
   appState.reminderTime = offsetTime(appState.bedtime, -15);
-  appState.bedtimeAlarm = builtInAlarmOptions[0].value;
-  appState.wakeAlarm = builtInAlarmOptions[1].value;
 
   applyTheme();
   updateTargetDisplay();
@@ -652,22 +879,86 @@ function initialize() {
   renderTracker();
   renderHistory();
   updateStats();
-  loadAlarmOptions().then(() => {
-    if (!alarmOptions.some((option) => option.value === appState.bedtimeAlarm)) {
-      appState.bedtimeAlarm = alarmOptions[0]?.value || "";
+  updateBottomNav("intro");
+}
+
+async function loadAlarmAndDefaults() {
+  await loadAlarmOptions();
+
+  if (!alarmOptions.some((option) => option.value === appState.bedtimeAlarm)) {
+    appState.bedtimeAlarm = alarmOptions[0]?.value || "";
+  }
+  if (!alarmOptions.some((option) => option.value === appState.wakeAlarm)) {
+    appState.wakeAlarm = alarmOptions[1]?.value || alarmOptions[0]?.value || "";
+  }
+
+  syncSettingsForm();
+  updateStats();
+}
+
+async function bootstrapFromAuth() {
+  dbError.classList.add("hidden");
+  dbLoading.classList.remove("hidden");
+
+  try {
+    if (!window.supabaseClient) {
+      throw new Error("Supabase client not initialized.");
     }
-    if (!alarmOptions.some((option) => option.value === appState.wakeAlarm)) {
-      appState.wakeAlarm = alarmOptions[1]?.value || alarmOptions[0]?.value || "";
+
+    dbReady = true;
+    const { data, error } = await window.supabaseClient.auth.getSession();
+    if (error) throw error;
+
+    currentUser = data.session?.user || null;
+    if (currentUser) {
+      await loadProfileAndCheckIns();
+      showPage("home");
+    } else {
+      authStatus.textContent = "Not logged in";
+      showPage("intro");
     }
-    syncSettingsForm();
-    updateStats();
+
+    dbLoading.classList.add("hidden");
+  } catch (error) {
+    dbLoading.classList.add("hidden");
+    dbError.classList.remove("hidden");
+    showFeedback(dbError.querySelector(".save-feedback"), error.message, false);
+  }
+}
+
+function installAuthListener() {
+  window.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+
+    if (currentUser) {
+      authStatus.textContent = currentUser.email;
+      await loadProfileAndCheckIns();
+      showPage("home");
+    } else {
+      Object.assign(appState, { ...DEFAULT_STATE });
+      appState.checkIns = [];
+      initializeBaseUi();
+      showPage("intro");
+      authStatus.textContent = "Not logged in";
+    }
   });
+}
+
+async function initialize() {
+  bindEvents();
+  initializeBaseUi();
+  await loadAlarmAndDefaults();
+  startAlarmScheduler();
 
   if ("Notification" in window && Notification.permission === "default") {
-    Notification.requestPermission();
+    Notification.requestPermission().catch(() => {});
   }
-  startAlarmScheduler();
-  updateBottomNav("intro");
+
+  if (window.supabaseClient) {
+    installAuthListener();
+  }
+
+  await bootstrapFromAuth();
 }
 
 initialize();

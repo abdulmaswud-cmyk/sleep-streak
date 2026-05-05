@@ -13,6 +13,12 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="db-loading hidden" id="dbLoading">Connecting to your database...</div>
+    <div class="db-error hidden" id="dbError">
+      <p>Could not connect to Supabase.</p>
+      <p class="save-feedback" id="dbErrorMessage" aria-live="polite"></p>
+      <button class="btn btn--secondary" id="retryLoadButton" type="button">Retry</button>
+    </div>
     <main class="viewport">
       <section class="app-shell">
         <section class="page page--intro is-active" data-page="intro">
@@ -26,6 +32,38 @@
           <button class="btn btn--primary" type="button" data-go-to="signup">
             Get Started
           </button>
+          <article class="auth-card">
+            <h3>Log in to save your progress</h3>
+            <p class="subtle">
+              Your streaks, goals, and check-ins will sync across devices.
+            </p>
+            <form id="authForm" class="auth-form">
+              <label class="field">
+                <span>Email</span>
+                <input id="authEmailInput" type="email" autocomplete="email" required />
+              </label>
+              <label class="field">
+                <span>Password</span>
+                <input
+                  id="authPasswordInput"
+                  type="password"
+                  minlength="6"
+                  autocomplete="current-password"
+                  required
+                />
+              </label>
+              <div class="auth-actions">
+                <button class="btn btn--secondary" id="signInButton" type="button">
+                  Log In
+                </button>
+                <button class="btn btn--primary" id="signUpButton" type="button">
+                  Sign Up
+                </button>
+              </div>
+              <p class="auth-status" id="authStatus">Not logged in</p>
+              <p class="save-feedback" id="authFeedback" aria-live="polite"></p>
+            </form>
+          </article>
         </section>
 
         <section class="page page--signup" data-page="signup">
@@ -94,9 +132,14 @@
                 One good night at a time - you've got this.
               </p>
             </div>
-            <button class="btn btn--ghost btn--sm" type="button" data-go-to="goals">
-              Edit goals
-            </button>
+            <div class="header-actions">
+              <button class="btn btn--ghost btn--sm" type="button" data-go-to="goals">
+                Edit goals
+              </button>
+              <button class="btn btn--ghost btn--sm" id="homeSignOutButton" type="button">
+                Sign Out
+              </button>
+            </div>
           </header>
 
           <article class="card stats-card">
@@ -188,6 +231,9 @@
               </button>
             </article>
           </section>
+          <button class="btn btn--secondary btn--compact" id="clearTodayButton" type="button">
+            Clear today's check-ins
+          </button>
 
           <nav class="bottom-nav" aria-label="Primary">
             <button class="nav-item is-active" type="button" data-go-to="home">
@@ -264,6 +310,7 @@
             <p>Manage your profile and goals.</p>
           </header>
           <article class="card settings-list">
+            <p><span>Account email</span><strong id="settingsEmailValue">Not logged in</strong></p>
             <p><span>Name</span><strong id="settingsNameValue">Sleeper</strong></p>
             <p><span>Bedtime goal</span><strong id="settingsBedtimeValue">22:00</strong></p>
             <p><span>Wake goal</span><strong id="settingsWakeValue">07:00</strong></p>
@@ -326,6 +373,9 @@
             </label>
 
             <button class="btn btn--primary" type="submit">Save Preferences</button>
+            <button class="btn btn--ghost" id="settingsSignOutButton" type="button">
+              Sign out account
+            </button>
             <p class="settings-help" id="alarmImportFeedback"></p>
             <p class="save-feedback" id="settingsSaveFeedback" aria-live="polite"></p>
           </form>
@@ -336,6 +386,8 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./supabaseClient.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>
