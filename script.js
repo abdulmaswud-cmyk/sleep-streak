@@ -93,6 +93,8 @@ const retryLoadButton = document.querySelector("#retryLoadButton");
 let alarmOptions = [];
 let scheduleTimerId = null;
 let dbReady = false;
+let authCooldownUntil = 0;
+let authCooldownTimerId = null;
 
 const lastNotificationMinuteByType = {
   bedtime: "",
@@ -552,6 +554,46 @@ function clearFeedback(el) {
   el.style.removeProperty("color");
 }
 
+function isRateLimitError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  const status = Number(error?.status || error?.statusCode || 0);
+  return status === 429 || message.includes("rate limit") || message.includes("too many requests");
+}
+
+function getAuthCooldownRemainingMs() {
+  return Math.max(0, authCooldownUntil - Date.now());
+}
+
+function getAuthCooldownSeconds() {
+  return Math.ceil(getAuthCooldownRemainingMs() / 1000);
+}
+
+function updateAuthButtonsForCooldown() {
+  const remainingSeconds = getAuthCooldownSeconds();
+  const inCooldown = remainingSeconds > 0;
+  signInButton.disabled = inCooldown;
+  signUpButton.disabled = inCooldown;
+  signInButton.textContent = inCooldown ? `Wait ${remainingSeconds}s` : "Log In";
+  signUpButton.textContent = inCooldown ? `Wait ${remainingSeconds}s` : "Sign Up";
+}
+
+function startAuthCooldown(ms) {
+  authCooldownUntil = Date.now() + ms;
+  updateAuthButtonsForCooldown();
+  if (authCooldownTimerId) {
+    window.clearInterval(authCooldownTimerId);
+  }
+  authCooldownTimerId = window.setInterval(() => {
+    updateAuthButtonsForCooldown();
+    if (getAuthCooldownRemainingMs() <= 0) {
+      window.clearInterval(authCooldownTimerId);
+      authCooldownTimerId = null;
+      authCooldownUntil = 0;
+      updateAuthButtonsForCooldown();
+    }
+  }, 1000);
+}
+
 async function upsertProfile() {
   if (!currentUser || !dbReady) return;
 
@@ -697,6 +739,17 @@ async function handleAuthAction(type) {
   clearFeedback(authFeedback);
   const email = authEmailInput.value.trim();
   const password = authPasswordInput.value;
+  const remainingSeconds = getAuthCooldownSeconds();
+
+  if (remainingSeconds > 0) {
+    showFeedback(
+      authFeedback,
+      `Too many attempts. Please wait ${remainingSeconds} second${remainingSeconds > 1 ? "s" : ""} before trying again.`,
+      false
+    );
+    updateAuthButtonsForCooldown();
+    return;
+  }
 
   if (!email || !password) {
     showFeedback(authFeedback, "Email and password are required.", false);
@@ -720,6 +773,15 @@ async function handleAuthAction(type) {
       showFeedback(authFeedback, "Logged in successfully.");
     }
   } catch (error) {
+    if (isRateLimitError(error)) {
+      startAuthCooldown(65000);
+      showFeedback(
+        authFeedback,
+        "Email rate limit reached. Please wait about a minute before trying again.",
+        false
+      );
+      return;
+    }
     showFeedback(authFeedback, error.message, false);
   }
 }
@@ -869,6 +931,8 @@ function bindEvents() {
   retryLoadButton.addEventListener("click", async () => {
     await bootstrapFromAuth();
   });
+
+  updateAuthButtonsForCooldown();
 }
 
 function initializeBaseUi() {
