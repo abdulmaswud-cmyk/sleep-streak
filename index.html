@@ -312,12 +312,13 @@
           </button>
         </section>
 
-        <section class="page page--sub" data-page="settings">
+        <section class="page page--sub page--settings" data-page="settings">
           <header class="sub-header">
             <h2>Settings</h2>
             <p>Manage your profile and goals.</p>
           </header>
-          <article class="card settings-list">
+          <article class="card settings-section settings-list">
+            <h3 class="settings-section-title">Current Profile</h3>
             <p><span>Account email</span><strong id="settingsEmailValue">Not logged in</strong></p>
             <p><span>Name</span><strong id="settingsNameValue">Sleeper</strong></p>
             <p><span>Bedtime goal</span><strong id="settingsBedtimeValue">22:00</strong></p>
@@ -330,63 +331,85 @@
             <p><span>Wake alarm</span><strong id="settingsWakeAlarmValue">Default chime</strong></p>
             <p><span>Notifications</span><strong id="settingsNotificationValue">Not enabled</strong></p>
           </article>
-          <form id="settingsForm" class="card settings-form">
-            <label class="settings-field">
-              <span>Display name</span>
-              <input id="settingsNameInput" type="text" maxlength="40" autocomplete="name" />
-            </label>
 
-            <label class="settings-field">
-              <span>Theme</span>
-              <select id="themeSelect">
-                <option value="twilight">Twilight Purple</option>
-                <option value="dawn">Dawn Glow</option>
-                <option value="midnight">Midnight Blue</option>
-              </select>
-            </label>
+          <form id="settingsForm" class="settings-stack">
+            <section class="card settings-section">
+              <h3 class="settings-section-title">Profile</h3>
+              <div class="settings-grid">
+                <label class="settings-field">
+                  <span>Display name</span>
+                  <input id="settingsNameInput" type="text" maxlength="40" autocomplete="name" />
+                </label>
 
-            <label class="settings-field">
-              <span>Reminder time</span>
-              <input id="reminderTimeInput" type="time" />
-            </label>
+                <label class="settings-field">
+                  <span>Theme</span>
+                  <select id="themeSelect">
+                    <option value="twilight">Twilight Purple</option>
+                    <option value="dawn">Dawn Glow</option>
+                    <option value="midnight">Midnight Blue</option>
+                  </select>
+                </label>
 
-            <label class="settings-field">
-              <span>Import alarm sounds from your folder</span>
-              <input id="alarmFilesInput" type="file" accept="audio/*" multiple />
-            </label>
+                <label class="settings-field">
+                  <span>Reminder time</span>
+                  <input id="reminderTimeInput" type="time" />
+                </label>
 
-            <label class="settings-field">
-              <span>Bedtime alarm sound</span>
-              <select id="bedtimeAlarmSelect"></select>
-            </label>
-            <button class="btn btn--secondary" id="testBedtimeAlarmButton" type="button">
-              Test bedtime alarm
-            </button>
+                <label class="toggle-row">
+                  <input id="nudgesToggle" type="checkbox" />
+                  <span>Show motivational nudges on Home</span>
+                </label>
+              </div>
+            </section>
 
-            <label class="settings-field">
-              <span>Wake alarm sound</span>
-              <select id="wakeAlarmSelect"></select>
-            </label>
-            <button class="btn btn--secondary" id="testWakeAlarmButton" type="button">
-              Test wake alarm
-            </button>
+            <section class="card settings-section">
+              <h3 class="settings-section-title">Alarms & Notifications</h3>
+              <div class="settings-grid">
+                <label class="settings-field settings-field--full">
+                  <span>Import alarm sounds from your folder</span>
+                  <input id="alarmFilesInput" type="file" accept="audio/*" multiple />
+                </label>
 
-            <button class="btn btn--secondary" id="notificationPermissionButton" type="button">
-              Enable notifications
-            </button>
+                <div class="alarm-picker">
+                  <label class="settings-field">
+                    <span>Bedtime alarm sound</span>
+                    <select id="bedtimeAlarmSelect"></select>
+                  </label>
+                  <button class="btn btn--secondary btn--inline" id="testBedtimeAlarmButton" type="button">
+                    Test
+                  </button>
+                </div>
 
-            <label class="toggle-row">
-              <input id="nudgesToggle" type="checkbox" />
-              <span>Show motivational nudges on Home</span>
-            </label>
+                <div class="alarm-picker">
+                  <label class="settings-field">
+                    <span>Wake alarm sound</span>
+                    <select id="wakeAlarmSelect"></select>
+                  </label>
+                  <button class="btn btn--secondary btn--inline" id="testWakeAlarmButton" type="button">
+                    Test
+                  </button>
+                </div>
 
-            <button class="btn btn--primary" type="submit">Save Preferences</button>
-            <button class="btn btn--ghost" id="settingsSignOutButton" type="button">
-              Sign out account
-            </button>
-            <p class="settings-help" id="alarmImportFeedback"></p>
-            <p class="save-feedback" id="settingsSaveFeedback" aria-live="polite"></p>
+                <button
+                  class="btn btn--secondary settings-field--full"
+                  id="notificationPermissionButton"
+                  type="button"
+                >
+                  Enable notifications
+                </button>
+              </div>
+              <p class="settings-help" id="alarmImportFeedback"></p>
+            </section>
+
+            <section class="card settings-actions-card">
+              <button class="btn btn--primary" type="submit">Save Preferences</button>
+              <button class="btn btn--ghost" id="settingsSignOutButton" type="button">
+                Sign out account
+              </button>
+              <p class="save-feedback" id="settingsSaveFeedback" aria-live="polite"></p>
+            </section>
           </form>
+
           <button class="btn btn--ghost" type="button" data-go-to="home">
             &larr; Back to Home
           </button>
