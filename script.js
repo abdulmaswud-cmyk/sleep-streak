@@ -93,6 +93,7 @@ const retryLoadButton = document.querySelector("#retryLoadButton");
 let alarmOptions = [];
 let scheduleTimerId = null;
 let dbReady = false;
+let authRequestInFlight = false;
 let authCooldownUntil = 0;
 let authCooldownTimerId = null;
 
@@ -557,7 +558,12 @@ function clearFeedback(el) {
 function isRateLimitError(error) {
   const message = String(error?.message || "").toLowerCase();
   const status = Number(error?.status || error?.statusCode || 0);
-  return status === 429 || message.includes("rate limit") || message.includes("too many requests");
+  return (
+    status === 429 ||
+    message.includes("rate limit") ||
+    message.includes("too many requests") ||
+    message.includes("email rate limit")
+  );
 }
 
 function getAuthCooldownRemainingMs() {
@@ -571,10 +577,40 @@ function getAuthCooldownSeconds() {
 function updateAuthButtonsForCooldown() {
   const remainingSeconds = getAuthCooldownSeconds();
   const inCooldown = remainingSeconds > 0;
-  signInButton.disabled = inCooldown;
-  signUpButton.disabled = inCooldown;
-  signInButton.textContent = inCooldown ? `Wait ${remainingSeconds}s` : "Log In";
-  signUpButton.textContent = inCooldown ? `Wait ${remainingSeconds}s` : "Sign Up";
+  const disabled = inCooldown || authRequestInFlight;
+  signInButton.disabled = disabled;
+  signUpButton.disabled = disabled;
+  if (inCooldown) {
+    signInButton.textContent = `Wait ${remainingSeconds}s`;
+    signUpButton.textContent = `Wait ${remainingSeconds}s`;
+    return;
+  }
+  if (authRequestInFlight) {
+    signInButton.textContent = "Please wait...";
+    signUpButton.textContent = "Please wait...";
+    return;
+  }
+  signInButton.textContent = "Log In";
+  signUpButton.textContent = "Sign Up";
+}
+
+function normalizeAuthErrorMessage(error) {
+  const rawMessage = String(error?.message || "");
+  const lower = rawMessage.toLowerCase();
+
+  if (isRateLimitError(error)) {
+    return "Too many auth requests right now. Please wait about a minute before trying again.";
+  }
+
+  if (
+    lower.includes("invalid login credentials") ||
+    lower.includes("invalid credentials") ||
+    lower.includes("email not confirmed")
+  ) {
+    return "Invalid email/password or email not confirmed yet.";
+  }
+
+  return rawMessage || "Authentication failed. Please try again.";
 }
 
 function startAuthCooldown(ms) {
@@ -756,17 +792,46 @@ async function handleAuthAction(type) {
     return;
   }
 
+  if (authRequestInFlight) {
+    return;
+  }
+
+  authRequestInFlight = true;
+  updateAuthButtonsForCooldown();
+
   try {
     if (type === "signup") {
-      const { error } = await window.supabaseClient.auth.signUp({
+      // Avoid unnecessary signup email sends for existing accounts.
+      const { error: signInError } = await window.supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (!signInError) {
+        showFeedback(authFeedback, "Logged in successfully.");
+        return;
+      }
+
+      const signInMessage = String(signInError?.message || "").toLowerCase();
+      const isInvalidCredentials =
+        signInMessage.includes("invalid login credentials") ||
+        signInMessage.includes("invalid credentials");
+
+      if (!isInvalidCredentials) {
+        throw signInError;
+      }
+
+      const { error: signUpError } = await window.supabaseClient.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
         },
       });
-      if (error) throw error;
-      showFeedback(authFeedback, "Signup successful. Check your email if confirmation is required.");
+      if (signUpError) throw signUpError;
+      showFeedback(
+        authFeedback,
+        "Signup successful. Check your email if confirmation is required."
+      );
     } else {
       const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -774,15 +839,18 @@ async function handleAuthAction(type) {
     }
   } catch (error) {
     if (isRateLimitError(error)) {
-      startAuthCooldown(65000);
+      startAuthCooldown(180000);
       showFeedback(
         authFeedback,
-        "Email rate limit reached. Please wait about a minute before trying again.",
+        "Email rate limit reached. Please wait a few minutes before trying again.",
         false
       );
       return;
     }
-    showFeedback(authFeedback, error.message, false);
+    showFeedback(authFeedback, normalizeAuthErrorMessage(error), false);
+  } finally {
+    authRequestInFlight = false;
+    updateAuthButtonsForCooldown();
   }
 }
 
