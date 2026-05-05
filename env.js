@@ -1,0 +1,5 @@
+window.__ENV__ = {
+  NEXT_PUBLIC_SUPABASE_URL: "https://ovayxmpwxwqknicspgrj.supabase.co",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YXl4bXB3eHdxa25pY3NwZ3JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMDcwMzgsImV4cCI6MjA5MzU4MzAzOH0.qBJ6S5FvlkhGfwsTFDwsl8Ajj3oqmSaikWcgDBP52P8",
+};

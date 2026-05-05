@@ -954,6 +954,17 @@ async function initialize() {
     Notification.requestPermission().catch(() => {});
   }
 
+  try {
+    if (window.supabaseClientReady) {
+      await window.supabaseClientReady;
+    }
+  } catch (error) {
+    dbLoading.classList.add("hidden");
+    dbError.classList.remove("hidden");
+    showFeedback(dbErrorMessage, error.message, false);
+    return;
+  }
+
   if (window.supabaseClient) {
     installAuthListener();
   }
