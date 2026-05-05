@@ -705,7 +705,13 @@ async function handleAuthAction(type) {
 
   try {
     if (type === "signup") {
-      const { error } = await window.supabaseClient.auth.signUp({ email, password });
+      const { error } = await window.supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
       if (error) throw error;
       showFeedback(authFeedback, "Signup successful. Check your email if confirmation is required.");
     } else {
