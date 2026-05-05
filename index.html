@@ -363,14 +363,9 @@
             </section>
 
             <section class="card settings-section">
-              <h3 class="settings-section-title">Alarms & Notifications</h3>
+              <h3 class="settings-section-title">Bedtime Alarm</h3>
               <div class="settings-grid">
-                <label class="settings-field settings-field--full">
-                  <span>Import alarm sounds from your folder</span>
-                  <input id="alarmFilesInput" type="file" accept="audio/*" multiple />
-                </label>
-
-                <div class="alarm-picker">
+                <div class="alarm-picker settings-field--full">
                   <label class="settings-field">
                     <span>Bedtime alarm sound</span>
                     <select id="bedtimeAlarmSelect"></select>
@@ -379,8 +374,18 @@
                     Test
                   </button>
                 </div>
+              </div>
+            </section>
 
-                <div class="alarm-picker">
+            <section class="card settings-section">
+              <h3 class="settings-section-title">Alarms & Notifications</h3>
+              <div class="settings-grid">
+                <label class="settings-field settings-field--full">
+                  <span>Import alarm sounds from your folder</span>
+                  <input id="alarmFilesInput" type="file" accept="audio/*" multiple />
+                </label>
+
+                <div class="alarm-picker settings-field--full">
                   <label class="settings-field">
                     <span>Wake alarm sound</span>
                     <select id="wakeAlarmSelect"></select>

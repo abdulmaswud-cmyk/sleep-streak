@@ -107,6 +107,17 @@ const builtInAlarmOptions = [
   { value: "default-bell", label: "Default Bell", frequency: 660, durationMs: 560 },
   { value: "default-soft", label: "Default Soft Tone", frequency: 540, durationMs: 360 },
 ];
+const audioFileExtensionPattern = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|weba|webm)$/i;
+
+function isSupportedAudioFile(file) {
+  if (!file) return false;
+  if (String(file.type || "").startsWith("audio/")) return true;
+  return audioFileExtensionPattern.test(file.name || "");
+}
+
+function getUploadedAlarmKey(file) {
+  return `${file.name}::${file.lastModified}::${file.size}`;
+}
 
 function showPage(pageName) {
   const nextPage = pages.find((page) => page.dataset.page === pageName);
@@ -381,10 +392,15 @@ function startAlarmScheduler() {
 }
 
 function populateAlarmSelectors() {
-  const buildOptionsMarkup = () =>
-    alarmOptions.map((option) => `<option value="${option.value}">${option.label}</option>`).join("");
-  bedtimeAlarmSelect.innerHTML = buildOptionsMarkup();
-  wakeAlarmSelect.innerHTML = buildOptionsMarkup();
+  [bedtimeAlarmSelect, wakeAlarmSelect].forEach((select) => {
+    select.innerHTML = "";
+    alarmOptions.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option.value;
+      item.textContent = option.label;
+      select.appendChild(item);
+    });
+  });
 }
 
 async function loadAlarmOptions() {
@@ -973,27 +989,51 @@ function bindEvents() {
   });
 
   alarmFilesInput.addEventListener("change", () => {
-    const files = Array.from(alarmFilesInput.files || []).filter((file) => file.type.startsWith("audio/"));
-    if (!files.length) {
-      alarmImportFeedback.textContent = "No audio files selected.";
+    const selectedFiles = Array.from(alarmFilesInput.files || []);
+    const supportedFiles = selectedFiles.filter(isSupportedAudioFile);
+    if (!supportedFiles.length) {
+      alarmImportFeedback.textContent =
+        selectedFiles.length > 0
+          ? "No supported audio files found. Use MP3, WAV, OGG, M4A, AAC, FLAC, or OPUS."
+          : "No audio files selected.";
       return;
     }
 
-    const imported = files.map((file, index) => ({
-      value: `upload-${Date.now()}-${index}`,
-      label: file.name,
+    const existingUploadKeys = new Set(
+      alarmOptions.filter((option) => option.uploadKey).map((option) => option.uploadKey)
+    );
+    const imported = supportedFiles
+      .filter((file) => !existingUploadKeys.has(getUploadedAlarmKey(file)))
+      .map((file, index) => ({
+      value: `upload-${Date.now()}-${file.lastModified}-${index}`,
+      label: file.name.replace(audioFileExtensionPattern, ""),
       filePath: URL.createObjectURL(file),
-    }));
+      uploadKey: getUploadedAlarmKey(file),
+      }));
+
+    if (!imported.length) {
+      alarmImportFeedback.textContent =
+        "Those files were already imported. Pick a different file or choose one from the alarm lists.";
+      alarmFilesInput.value = "";
+      return;
+    }
 
     alarmOptions = [...alarmOptions, ...imported];
     populateAlarmSelectors();
 
-    if (!appState.bedtimeAlarm && alarmOptions.length) appState.bedtimeAlarm = alarmOptions[0].value;
-    if (!appState.wakeAlarm && alarmOptions.length) appState.wakeAlarm = alarmOptions[0].value;
+    if (!alarmOptions.some((option) => option.value === appState.bedtimeAlarm)) {
+      appState.bedtimeAlarm = alarmOptions[0]?.value || "";
+    }
+    if (!alarmOptions.some((option) => option.value === appState.wakeAlarm)) {
+      appState.wakeAlarm = alarmOptions[1]?.value || alarmOptions[0]?.value || "";
+    }
 
     syncSettingsForm();
     updateStats();
-    alarmImportFeedback.textContent = `Imported ${imported.length} alarm sound${imported.length > 1 ? "s" : ""}.`;
+    alarmImportFeedback.textContent = `Imported ${imported.length} alarm sound${
+      imported.length > 1 ? "s" : ""
+    }. Select one and tap Save Preferences.`;
+    alarmFilesInput.value = "";
   });
 
   retryLoadButton.addEventListener("click", async () => {
